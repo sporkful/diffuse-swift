@@ -6,15 +6,15 @@ public struct ExplodedDiff<Element: Hashable> {
     let element: Element
     var change: BaseChange
 
-    public enum BaseChange {
+    public enum BaseChange: Equatable {
       case none
-      case removed(associatedWith: Int?)
+      case removed(associatedWith: Int?) // wrt canonicalDiff::new
     }
   }
 
   public struct InsertedElement {
     let element: Element
-    let associatedWith: Int?
+    let associatedWith: Int? // wrt canonicalDiff::original (note equivalence wrt self.base)
   }
 
   let base: [BaseElement]
@@ -26,29 +26,59 @@ public struct ExplodedDiff<Element: Hashable> {
     var base: [BaseElement]
     base = original.map { element in BaseElement(element: element, change: .none) }
 
-    // key = offset
-    // value = numUnappliedRemovals affecting offset..<(nextOffset ?? endOffset)
-    var unappliedRemovalCounter: [Int: Int] = [:]
-
+    // unappliedRemovalCounter[baseOffset] = numUnappliedRemovals affecting insert at baseOffset
+    var unappliedRemovalCounter: [Int] = []
+    var previousOffset = 0
     for (numUnappliedRemovals, removal) in canonicalDiff.removals.enumerated() {
       guard base[removal._offset].element == removal._element else {
         throw DiffuseError.validation
       }
       base[removal._offset].change = .removed(associatedWith: nil)
 
-      // + 1 since the un-application of the current removal also affects offset..<nextOffset
-      unappliedRemovalCounter[removal._offset] = numUnappliedRemovals + 1
+      unappliedRemovalCounter.append(
+        contentsOf: Array(
+          repeating: numUnappliedRemovals,
+          count: removal._offset - previousOffset
+        )
+      )
+      previousOffset = removal._offset
     }
-
-    self.base = base
+    // +1 for insertions that have an "append" effect
+    unappliedRemovalCounter.append(
+      contentsOf: Array(
+        repeating: canonicalDiff.removals.count,
+        count: base.count - previousOffset + 1
+      )
+    )
+    guard unappliedRemovalCounter.count == base.count + 1 else {
+      throw DiffuseError.DEV
+    }
 
     var insertions: [Int: [InsertedElement]] = [:]
 
     for (numUnappliedInsertions, insertion) in canonicalDiff.insertions.enumerated() {
-      // TODO: if removals are sparse, may take a long time to search for which range in
-      // unappliedRemovalCounter that this insertion belongs to
+      let offsetWrtBase = insertion._offset - numUnappliedInsertions
+        + unappliedRemovalCounter[(insertion._offset - numUnappliedInsertions)]
+
+      if insertions[offsetWrtBase] == nil {
+        insertions[offsetWrtBase] = []
+      }
+      insertions[offsetWrtBase]!.append(
+        InsertedElement(
+          element: insertion._element,
+          associatedWith: insertion._associatedOffset
+        )
+      )
+
+      if let associatedOffset = insertion._associatedOffset {
+        guard base[associatedOffset].change == .removed(associatedWith: nil) else {
+          throw DiffuseError.DEV
+        }
+        base[associatedOffset].change = .removed(associatedWith: insertion._offset)
+      }
     }
 
+    self.base = base
     self.insertions = insertions
   }
 }

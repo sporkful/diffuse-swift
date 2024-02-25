@@ -1,7 +1,7 @@
 import XCTest
 @testable import Diffuse
 
-final class CollectionDifferenceExt: XCTestCase {
+final class CollectionDifferenceExtTests: XCTestCase {
 
   func testInferringMultipleMovesEffect(
     old: [String],
