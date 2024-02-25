@@ -59,7 +59,13 @@ extension CollectionDifference where ChangeElement: Hashable {
           )
         )
       } else {
-        changes.append(insertion)
+        changes.append(
+          .insert(
+            offset: insertion._offset,
+            element: insertion._element,
+            associatedWith: nil
+          )
+        )
       }
     }
 
