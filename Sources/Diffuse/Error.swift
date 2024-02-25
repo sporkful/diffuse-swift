@@ -1,5 +1,5 @@
 import Foundation
 
 enum DiffuseError: Error {
-  case canonicalDifferenceValidation
+  case validation
 }

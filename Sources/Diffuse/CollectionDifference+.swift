@@ -78,7 +78,7 @@ extension CollectionDifference where ChangeElement: Hashable {
     )
 
     guard let diff = CollectionDifference(changes) else {
-      throw DiffuseError.canonicalDifferenceValidation
+      throw DiffuseError.validation
     }
 
     return diff
