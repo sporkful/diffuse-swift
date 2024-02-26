@@ -26,7 +26,10 @@ public struct ExplodedDiff<Element: Hashable> {
     var base: [BaseElement]
     base = original.map { element in BaseElement(element: element, change: .none) }
 
-    // unappliedRemovalCounter[baseOffset] = numUnappliedRemovals affecting insert at baseOffset
+    // Since `unappliedRemovalCounter` is intended to be indexed into by
+    // `(insertion._offset - numUnappliedInsertions)`, it is in the coordinate
+    // space where removals were actually applied (but insertions were not),
+    // NOT the coordinate space wrt `base`.
     var unappliedRemovalCounter: [Int] = []
     var previousOffset = 0
     for (numUnappliedRemovals, removal) in canonicalDiff.removals.enumerated() {
@@ -41,20 +44,22 @@ public struct ExplodedDiff<Element: Hashable> {
           count: removal._offset - previousOffset
         )
       )
-      previousOffset = removal._offset
+      // The `+ 1` here helps us stay in the correct coordinate space.
+      previousOffset = removal._offset + 1
     }
-    // +1 for insertions that have an "append" effect
+    // Note the extra `+ 1` element below is to support off-the-end insertions,
+    // i.e. insertions that ultimately have an "appending" effect.
     unappliedRemovalCounter.append(
       contentsOf: Array(
         repeating: canonicalDiff.removals.count,
-        count: base.count - previousOffset + 1
+        count: (base.count - canonicalDiff.removals.count) - unappliedRemovalCounter.count + 1
       )
     )
-    guard unappliedRemovalCounter.count == base.count + 1 else {
+    guard unappliedRemovalCounter.count == base.count - canonicalDiff.removals.count + 1 else {
       throw DiffuseError.DEV
     }
 
-    // hunkEndOffset[baseOffset] = endOffset of hunk (e.g. removed subrange) containing baseOffset
+    // hunkEndOffset[baseOffset] = endOffset of hunk (e.g. removed subrange) containing baseOffset.
     var hunkEndOffset: [Int] = Array(0..<(base.count + 1))
     if canonicalDiff.removals.count >= 2 {
       var currentHunkStartOffset: Int = canonicalDiff.removals.first!._offset

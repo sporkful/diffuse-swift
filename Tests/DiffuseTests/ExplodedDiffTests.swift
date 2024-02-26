@@ -148,4 +148,56 @@ final class ExplodedDiffTests: XCTestCase {
     try testExplodedDiffEffect(old: old, new: new)
   }
 
+  func testFuzzEdited(
+    numTests: UInt,
+    generator: RandomStringGenerator,
+    possibleListLengths: Range<UInt>,
+    possibleNumEdits: Range<UInt>,
+    withLogging: Bool = false
+  ) throws {
+    for _ in 0..<numTests {
+      let old = generator.randomList(possibleLengths: possibleListLengths)
+      let new = randomlyEdited(original: old, possibleNumEdits: possibleNumEdits, generator: generator)
+//      try visualizeExplodedDiff(old: old, new: new)
+      try testExplodedDiffEffect(old: old, new: new)
+    }
+  }
+
+  func testFuzzEditedSmall() throws {
+    try testFuzzEdited(
+      numTests: 10000,
+      generator: RandomStringGenerator(alphabet: .uInt16, numPossibleValues: 20),
+      possibleListLengths: 0..<20,
+      possibleNumEdits: 0..<200,
+      withLogging: true
+    )
+  }
+
+  func testFuzzEditedDense() throws {
+    try testFuzzEdited(
+      numTests: 10000,
+      generator: RandomStringGenerator(alphabet: .uInt16, numPossibleValues: 20),
+      possibleListLengths: 0..<200,
+      possibleNumEdits: 0..<200
+    )
+  }
+
+  func testFuzzEditedSparse() throws {
+    try testFuzzEdited(
+      numTests: 10000,
+      generator: RandomStringGenerator(alphabet: .uInt16, numPossibleValues: 2000),
+      possibleListLengths: 0..<200,
+      possibleNumEdits: 0..<200
+    )
+  }
+
+  func testFuzzEditedXL() throws {
+    try testFuzzEdited(
+      numTests: 100,
+      generator: RandomStringGenerator(alphabet: .uInt16, numPossibleValues: 20000),
+      possibleListLengths: 10000..<20000,
+      possibleNumEdits: 1000..<2000
+    )
+  }
+
 }
