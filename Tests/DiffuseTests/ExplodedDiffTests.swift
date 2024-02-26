@@ -13,9 +13,7 @@ final class ExplodedDiffTests: XCTestCase {
     )
     var result: [String] = []
     for (offsetWrtBase, baseElement) in explodedDiff.base.enumerated() {
-      if let insertedElements = explodedDiff.insertions[offsetWrtBase] {
-        result.append(contentsOf: insertedElements.map { $0.element })
-      }
+      result.append(contentsOf: explodedDiff.insertions[offsetWrtBase].map { $0.element })
       switch baseElement.change {
       case .none:
         result.append(baseElement.element)
@@ -23,7 +21,7 @@ final class ExplodedDiffTests: XCTestCase {
         continue
       }
     }
-    if let appendedElements = explodedDiff.insertions[explodedDiff.base.count] {
+    if let appendedElements = explodedDiff.insertions.last {
       result.append(contentsOf: appendedElements.map { $0.element })
     }
     XCTAssertEqual(new, result)
@@ -44,13 +42,11 @@ final class ExplodedDiffTests: XCTestCase {
       from: old
     )
     for (offsetWrtBase, baseElement) in explodedDiff.base.enumerated() {
-      if let insertedElements = explodedDiff.insertions[offsetWrtBase] {
-        log.append(
-          contentsOf: insertedElements.map {
-            "+  \($0.element) \(String(describing: $0.associatedWith))"
-          }
-        )
-      }
+      log.append(
+        contentsOf: explodedDiff.insertions[offsetWrtBase].map {
+          "+  \($0.element) \(String(describing: $0.associatedWith))"
+        }
+      )
       switch baseElement.change {
       case .none:
         log.append("   \(baseElement.element)")
@@ -58,7 +54,7 @@ final class ExplodedDiffTests: XCTestCase {
         log.append("-  \(baseElement.element) \(String(describing: associatedWith))")
       }
     }
-    if let appendedElements = explodedDiff.insertions[explodedDiff.base.count] {
+    if let appendedElements = explodedDiff.insertions.last {
       log.append(
         contentsOf: appendedElements.map {
           "+  \($0.element) \(String(describing: $0.associatedWith))"
@@ -165,7 +161,7 @@ final class ExplodedDiffTests: XCTestCase {
 
   func testFuzzEditedSmall() throws {
     try testFuzzEdited(
-      numTests: 10000,
+      numTests: 100000,
       generator: RandomStringGenerator(alphabet: .uInt16, numPossibleValues: 20),
       possibleListLengths: 0..<20,
       possibleNumEdits: 0..<200,
@@ -175,7 +171,7 @@ final class ExplodedDiffTests: XCTestCase {
 
   func testFuzzEditedDense() throws {
     try testFuzzEdited(
-      numTests: 10000,
+      numTests: 100000,
       generator: RandomStringGenerator(alphabet: .uInt16, numPossibleValues: 20),
       possibleListLengths: 0..<200,
       possibleNumEdits: 0..<200
@@ -184,7 +180,7 @@ final class ExplodedDiffTests: XCTestCase {
 
   func testFuzzEditedSparse() throws {
     try testFuzzEdited(
-      numTests: 10000,
+      numTests: 100000,
       generator: RandomStringGenerator(alphabet: .uInt16, numPossibleValues: 2000),
       possibleListLengths: 0..<200,
       possibleNumEdits: 0..<200
@@ -193,7 +189,7 @@ final class ExplodedDiffTests: XCTestCase {
 
   func testFuzzEditedXL() throws {
     try testFuzzEdited(
-      numTests: 100,
+      numTests: 1000,
       generator: RandomStringGenerator(alphabet: .uInt16, numPossibleValues: 20000),
       possibleListLengths: 10000..<20000,
       possibleNumEdits: 1000..<2000

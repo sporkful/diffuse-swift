@@ -1,24 +1,25 @@
 import Foundation
-import SwiftUI
 
 public struct ExplodedDiff<Element: Hashable> {
-  public struct BaseElement {
+  struct BaseElement {
     let element: Element
     var change: BaseChange
 
-    public enum BaseChange: Equatable {
+    enum BaseChange: Equatable {
       case none
       case removed(associatedWith: Int?) // wrt canonicalDiff::new
     }
   }
 
-  public struct InsertedElement {
+  struct InsertedElement: Equatable {
     let element: Element
     let associatedWith: Int? // wrt canonicalDiff::original (note equivalence wrt self.base)
   }
 
+  typealias InsertionHunk = [InsertedElement]
+
   let base: [BaseElement]
-  let insertions: [Int: [InsertedElement]] // key = offsetWrtBase
+  let insertions: [InsertionHunk] // index = offsetWrtBase
 
   // TODO: clarify assumptions about diff generation, e.g. being generated from an array
   // since the current impl is not particularly conscious of distinctions between index vs offset.
@@ -95,17 +96,17 @@ public struct ExplodedDiff<Element: Hashable> {
       throw DiffuseError.DEV
     }
 
-    var insertions: [Int: [InsertedElement]] = [:]
+    var insertions: [InsertionHunk] = Array(repeating: InsertionHunk(), count: base.count + 1)
     for (numUnappliedInsertions, insertion) in canonicalDiff.insertions.enumerated() {
       let offsetWrtBase = hunkEndOffset[
         insertion._offset - numUnappliedInsertions
           + unappliedRemovalCounter[(insertion._offset - numUnappliedInsertions)]
       ]
 
-      if insertions[offsetWrtBase] == nil {
-        insertions[offsetWrtBase] = []
+      guard insertions.indices.contains(offsetWrtBase) else {
+        throw DiffuseError.DEV
       }
-      insertions[offsetWrtBase]!.append(
+      insertions[offsetWrtBase].append(
         InsertedElement(
           element: insertion._element,
           associatedWith: insertion._associatedOffset
