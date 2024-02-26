@@ -127,6 +127,20 @@ final class ExplodedDiffTests: XCTestCase {
     try testExplodedDiffEffect(old: old, new: new)
   }
 
+  func testBasic08() throws {
+    let old = ["A", "B", "C"]
+    let new = ["X", "Y", "Z", "A"]
+    try visualizeExplodedDiff(old: old, new: new)
+    try testExplodedDiffEffect(old: old, new: new)
+  }
+
+  func testBasic09() throws {
+    let old = ["A", "B", "C"]
+    let new = ["B", "X", "Y", "Z", "A"]
+    try visualizeExplodedDiff(old: old, new: new)
+    try testExplodedDiffEffect(old: old, new: new)
+  }
+
   func testBasic11() throws {
     let old = ["A", "B", "C", "D", "E", "F", "G"]
     let new = ["B", "C", "X", "Y", "Z", "F", "G"]

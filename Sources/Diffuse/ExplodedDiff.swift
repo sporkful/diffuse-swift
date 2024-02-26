@@ -54,11 +54,48 @@ public struct ExplodedDiff<Element: Hashable> {
       throw DiffuseError.DEV
     }
 
-    var insertions: [Int: [InsertedElement]] = [:]
+    // hunkEndOffset[baseOffset] = endOffset of hunk (e.g. removed subrange) containing baseOffset
+    var hunkEndOffset: [Int] = Array(0..<(base.count + 1))
+    if canonicalDiff.removals.count >= 2 {
+      var currentHunkStartOffset: Int = canonicalDiff.removals.first!._offset
+      var currentHunkEndOffset: Int = currentHunkStartOffset + 1
+      for removal in canonicalDiff.removals[1...] {
+        if removal._offset == currentHunkEndOffset {
+          // current hunk continues
+          currentHunkEndOffset += 1
+        } else {
+          // current hunk ended (before current removal)
+          hunkEndOffset.replaceSubrange(
+            currentHunkStartOffset..<currentHunkEndOffset,
+            with: Array(
+              repeating: currentHunkEndOffset,
+              count: currentHunkEndOffset - currentHunkStartOffset
+            )
+          )
+          // start new hunk for current removal
+          currentHunkStartOffset = removal._offset
+          currentHunkEndOffset = currentHunkStartOffset + 1
+        }
+      }
+      // close last hunk
+      hunkEndOffset.replaceSubrange(
+        currentHunkStartOffset..<currentHunkEndOffset,
+        with: Array(
+          repeating: currentHunkEndOffset,
+          count: currentHunkEndOffset - currentHunkStartOffset
+        )
+      )
+    }
+    guard hunkEndOffset.count == base.count + 1 else {
+      throw DiffuseError.DEV
+    }
 
+    var insertions: [Int: [InsertedElement]] = [:]
     for (numUnappliedInsertions, insertion) in canonicalDiff.insertions.enumerated() {
-      let offsetWrtBase = insertion._offset - numUnappliedInsertions
-        + unappliedRemovalCounter[(insertion._offset - numUnappliedInsertions)]
+      let offsetWrtBase = hunkEndOffset[
+        insertion._offset - numUnappliedInsertions
+          + unappliedRemovalCounter[(insertion._offset - numUnappliedInsertions)]
+      ]
 
       if insertions[offsetWrtBase] == nil {
         insertions[offsetWrtBase] = []
